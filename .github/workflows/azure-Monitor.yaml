@@ -1,0 +1,43 @@
+name: CI/CD Pipeline with Azure Alert
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Azure CLI
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get install -y jq
+
+    - name: Login to Azure
+      run: |
+        az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -p ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+        az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Create Azure Monitor alert rule
+      run: |
+        az monitor metrics alert create \
+          --name "myAlertRule" \
+          --resource-group "Karan_rg" \
+          --scopes "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/Karan_rg/providers/Microsoft.Compute/virtualMachines/karanvm" \
+          --condition "avg Percentage CPU > 70" \
+          --description "Alert for high CPU usage" \
+          --action-group "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/Karan_rg/providers/microsoft.insights/actionGroups/myActionGroup"
+
+    - name: Test and generate alert
+      run: |
+        # Add your test script here
+        echo "Testing and generating alert"
